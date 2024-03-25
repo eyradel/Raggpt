@@ -1,13 +1,13 @@
-import os
-from dotenv import load_dotenv, find_dotenv
+import os, config
 import streamlit as st
+import pinecone_api, database
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain.utilities import WikipediaAPIWrapper
-load_dotenv(find_dotenv())
-apikey = os.environ.get("API_KEY")
+
+
 
 # App framework
 st.set_page_config(page_title='YourNextStep', page_icon=':book:')
@@ -157,12 +157,17 @@ script_template = PromptTemplate(
 )
 
 # Memory
-title_memory = ConversationBufferMemory(input_key='topic', memory_key='chat_history')
-script_memory = ConversationBufferMemory(input_key='title', memory_key='chat_history')
+# title_memory = ConversationBufferMemory(input_key='topic', memory_key='chat_history')
+# script_memory = ConversationBufferMemory(input_key='title', memory_key='chat_history')
+
+
+
+title_memory = pinecone_api.memory(input_key='topic', memory_key='chat_history')
+script_memory = pinecone_api.memory(input_key='title', memory_key='chat_history')
 
 # Llms
-llm = OpenAI(temperature=0.9)
-title_chain = LLMChain(llm=llm, prompt=title_template, verbose=True, output_key='title', memory=title_memory)
+llm = OpenAI(api_key=config.OPENAI_KEY, temperature=0.9)
+title_chain = LLMChain(llm=llm,  prompt=title_template, verbose=True, output_key='title', memory=title_memory)
 script_chain = LLMChain(llm=llm, prompt=script_template, verbose=True, output_key='script', memory=script_memory)
 
 wiki = WikipediaAPIWrapper()
@@ -171,15 +176,20 @@ if prompt:
     title = title_chain.run(prompt)
     wiki_research = wiki.run(prompt) 
     script = script_chain.run(title=title, wikipedia_research=wiki_research)
+    
+    # Store in DB like this
+    database.title_memory.append(title)
+    database.script_memory.append(script)
+    database.wiki_memory.append(wiki_research)
 
     st.write(title) 
     st.write(script) 
 
     with st.expander('Title History'): 
-        st.info(title_memory.buffer)
+        st.info(database.title_memory)
 
     with st.expander('Script History'): 
-        st.info(script_memory.buffer)
+        st.info(database.script_memory)
 
     with st.expander('Wikipedia Research'): 
-        st.info(wiki_research)
+        st.info(database.wiki_memory)
