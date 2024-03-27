@@ -172,8 +172,8 @@ if prompt:
     wiki_research = wiki.run(prompt) 
     script = script_chain.run(title=title, wikipedia_research=wiki_research)
 
-    st.write(title) 
-    st.write(script) 
+    # st.write(title) 
+    # st.write(script) 
 
     with st.expander('Title History'): 
         st.info(title_memory.buffer)
